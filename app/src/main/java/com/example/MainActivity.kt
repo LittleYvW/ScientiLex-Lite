@@ -16,6 +16,8 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -85,6 +87,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.ScrollState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.theme.DarkAccent
@@ -248,6 +253,11 @@ fun AcademiaApp(viewModel: AcademiaViewModel) {
   // Typography scalar based on Settings
   val fontScale = if (fontScaleMode == "compact") 0.85f else 1.0f
 
+  // Scroll states for panels to control gesture enabled states smoothly
+  val catalogScrollState = rememberScrollState()
+  val managementScrollState = rememberScrollState()
+  val density = LocalDensity.current
+
   // Standard toast notification overlay overlayed on active layers
   var activeToastText by remember { mutableStateOf<String?>(null) }
   LaunchedEffect(Unit) {
@@ -313,11 +323,13 @@ fun AcademiaApp(viewModel: AcademiaViewModel) {
           },
           onDrag = { change, dragAmount ->
             change.consume()
-            dragX += dragAmount.x
-            dragY += dragAmount.y
+            val dxDp = with(density) { dragAmount.x.toDp().value }
+            val dyDp = with(density) { dragAmount.y.toDp().value }
+            dragX += dxDp
+            dragY += dyDp
 
             if (dragAxis == null) {
-              if (abs(dragX) > 15 || abs(dragY) > 15) {
+              if (abs(dragX) > 15f || abs(dragY) > 15f) {
                 dragAxis = if (abs(dragX) > abs(dragY)) "x" else "y"
               }
             }
@@ -337,58 +349,37 @@ fun AcademiaApp(viewModel: AcademiaViewModel) {
                 else -> 0f
               }
 
+              val dampX = applyHighResistance(dragX)
+              val dampY = applyHighResistance(dragY)
+
+              var tx = baseOffsetX
+              var ty = baseOffsetY
+
               if (currentPanel == PanelType.CENTER) {
                 if (dragAxis == "x") {
-                  offsetX.snapTo(applyHighResistance(dragX))
-                  offsetY.snapTo(0f)
+                  tx = baseOffsetX + dampX
+                  ty = 0f
                 } else if (dragAxis == "y") {
-                  offsetX.snapTo(0f)
-                  offsetY.snapTo(applyHighResistance(dragY))
+                  tx = 0f
+                  ty = baseOffsetY + dampY
                 }
               } else {
-                // Dragging back constraints
-                if (currentPanel == PanelType.ABOUT) {
-                  if (dragAxis == "x") {
-                    if (dragX < 0) {
-                      offsetX.snapTo((baseOffsetX + dragX).coerceAtLeast(0f))
-                    } else {
-                      offsetX.snapTo(baseOffsetX + applyHighResistance(dragX) * 0.15f)
-                    }
-                  } else {
-                    offsetY.snapTo(applyHighResistance(dragY) * 0.15f)
-                  }
-                } else if (currentPanel == PanelType.SETTINGS) {
-                  if (dragAxis == "x") {
-                    if (dragX > 0) {
-                      offsetX.snapTo((baseOffsetX + dragX).coerceAtMost(0f))
-                    } else {
-                      offsetX.snapTo(baseOffsetX + applyHighResistance(dragX) * 0.15f)
-                    }
-                  } else {
-                    offsetY.snapTo(applyHighResistance(dragY) * 0.15f)
-                  }
-                } else if (currentPanel == PanelType.CATALOG) {
-                  if (dragAxis == "y") {
-                    if (dragY < 0) {
-                      offsetY.snapTo((baseOffsetY + dragY).coerceAtLeast(0f))
-                    } else {
-                      offsetY.snapTo(baseOffsetY + applyHighResistance(dragY) * 0.15f)
-                    }
-                  } else {
-                    offsetX.snapTo(applyHighResistance(dragX) * 0.15f)
-                  }
-                } else if (currentPanel == PanelType.MANAGER) {
-                  if (dragAxis == "y") {
-                    if (dragY > 0) {
-                      offsetY.snapTo((baseOffsetY + dragY).coerceAtMost(0f))
-                    } else {
-                      offsetY.snapTo(baseOffsetY + applyHighResistance(dragY) * 0.15f)
-                    }
-                  } else {
-                    offsetX.snapTo(applyHighResistance(dragX) * 0.15f)
-                  }
+                if (currentPanel == PanelType.ABOUT && dragX < 0f && dragAxis == "x") {
+                  tx = baseOffsetX + dampX
+                } else if (currentPanel == PanelType.SETTINGS && dragX > 0f && dragAxis == "x") {
+                  tx = baseOffsetX + dampX
+                } else if (currentPanel == PanelType.CATALOG && dragY < 0f && dragAxis == "y") {
+                  ty = baseOffsetY + dampY
+                } else if (currentPanel == PanelType.MANAGER && dragY > 0f && dragAxis == "y") {
+                  ty = baseOffsetY + dampY
+                } else {
+                  tx = baseOffsetX + applyHighResistance(dragX) * 0.15f
+                  ty = baseOffsetY + applyHighResistance(dragY) * 0.15f
                 }
               }
+
+              offsetX.snapTo(tx)
+              offsetY.snapTo(ty)
             }
           },
           onDragEnd = {
@@ -409,13 +400,51 @@ fun AcademiaApp(viewModel: AcademiaViewModel) {
                 else if (currentPanel == PanelType.CATALOG && dragY <= -threshold) targetPanel = PanelType.CENTER
                 else if (currentPanel == PanelType.MANAGER && dragY >= threshold) targetPanel = PanelType.CENTER
               }
-              viewModel.setCurrentPanel(targetPanel)
+              if (targetPanel == currentPanel) {
+                val targetX = when (currentPanel) {
+                  PanelType.CENTER -> 0f
+                  PanelType.ABOUT -> W.value
+                  PanelType.SETTINGS -> -W.value
+                  else -> 0f
+                }
+                val targetY = when (currentPanel) {
+                  PanelType.CENTER -> 0f
+                  PanelType.CATALOG -> H.value
+                  PanelType.MANAGER -> -H.value
+                  else -> 0f
+                }
+                coroutineScope.launch {
+                  offsetX.animateTo(targetX, animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow))
+                }
+                coroutineScope.launch {
+                  offsetY.animateTo(targetY, animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow))
+                }
+              } else {
+                viewModel.setCurrentPanel(targetPanel)
+              }
             }
           },
           onDragCancel = {
             isDragging = false
             coroutineScope.launch {
-              viewModel.setCurrentPanel(currentPanel)
+              val targetX = when (currentPanel) {
+                PanelType.CENTER -> 0f
+                PanelType.ABOUT -> W.value
+                PanelType.SETTINGS -> -W.value
+                else -> 0f
+              }
+              val targetY = when (currentPanel) {
+                PanelType.CENTER -> 0f
+                PanelType.CATALOG -> H.value
+                PanelType.MANAGER -> -H.value
+                else -> 0f
+              }
+              coroutineScope.launch {
+                offsetX.animateTo(targetX, animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow))
+              }
+              coroutineScope.launch {
+                offsetY.animateTo(targetY, animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow))
+              }
             }
           }
         )
@@ -457,7 +486,7 @@ fun AcademiaApp(viewModel: AcademiaViewModel) {
           .fillMaxSize()
           .offset { IntOffset(currentX.roundToPx(), (currentY - H).roundToPx()) }
       ) {
-        CatalogPanel(viewModel, fontScale, currentPanel == PanelType.CATALOG)
+        CatalogPanel(viewModel, fontScale, currentPanel == PanelType.CATALOG, catalogScrollState)
       }
 
       // Bottom Panel: Management / Architecture
@@ -466,7 +495,7 @@ fun AcademiaApp(viewModel: AcademiaViewModel) {
           .fillMaxSize()
           .offset { IntOffset(currentX.roundToPx(), (currentY + H).roundToPx()) }
       ) {
-        ManagementPanel(viewModel, localDocsCount, fontScale, currentPanel == PanelType.MANAGER)
+        ManagementPanel(viewModel, localDocsCount, fontScale, currentPanel == PanelType.MANAGER, managementScrollState)
       }
 
       // Center Panel: Search Dashboard
@@ -762,7 +791,7 @@ fun SettingsPanel(viewModel: AcademiaViewModel, fontScale: Float, isActive: Bool
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CatalogPanel(viewModel: AcademiaViewModel, fontScale: Float, isActive: Boolean) {
+fun CatalogPanel(viewModel: AcademiaViewModel, fontScale: Float, isActive: Boolean, scrollState: ScrollState) {
   val searchTerm by viewModel.searchTerm.collectAsState()
   val selectedCat by viewModel.catalogCategory.collectAsState()
 
@@ -793,7 +822,10 @@ fun CatalogPanel(viewModel: AcademiaViewModel, fontScale: Float, isActive: Boole
       modifier = Modifier
         .fillMaxWidth()
         .weight(1f)
-        .verticalScroll(rememberScrollState())
+        .verticalScroll(
+          state = scrollState,
+          enabled = scrollState.value > 0
+        )
         .padding(bottom = 16.dp),
       verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
@@ -935,7 +967,7 @@ fun CatalogArticleItem(paper: CatalogPaperItem, fontScale: Float, onClick: () ->
 }
 
 @Composable
-fun ManagementPanel(viewModel: AcademiaViewModel, docsCount: Int, fontScale: Float, isActive: Boolean) {
+fun ManagementPanel(viewModel: AcademiaViewModel, docsCount: Int, fontScale: Float, isActive: Boolean, scrollState: ScrollState) {
   Column(
     modifier = Modifier
       .fillMaxSize()
@@ -949,7 +981,10 @@ fun ManagementPanel(viewModel: AcademiaViewModel, docsCount: Int, fontScale: Flo
       modifier = Modifier
         .fillMaxWidth()
         .weight(1f)
-        .verticalScroll(rememberScrollState())
+        .verticalScroll(
+          state = scrollState,
+          enabled = scrollState.value > 0
+        )
     ) {
       // Plus drop zone button mockup
       Box(
@@ -1183,6 +1218,7 @@ fun ReaderScreen(viewModel: AcademiaViewModel, fontScale: Float) {
 
   val content = remember(docId, language) { BilingualData.getPaperContent(docId, language) }
   val coroutineScope = rememberCoroutineScope()
+  val density = LocalDensity.current
 
   BoxWithConstraints(
     modifier = Modifier
@@ -1211,48 +1247,78 @@ fun ReaderScreen(viewModel: AcademiaViewModel, fontScale: Float) {
       modifier = Modifier
         .fillMaxSize()
         .pointerInput(page, W) {
-          detectDragGestures(
-            onDragStart = {
-              pageDragX = 0f
-              isPagingDrag = true
-            },
-            onDrag = { change, dragAmount ->
-              change.consume()
-              pageDragX += dragAmount.x
+          awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            var isDraggingDetected = false
+            val startTime = System.currentTimeMillis()
+            val startPosition = down.position
 
-              // Realtime horizontally translation with hard elastic edges
-              val baseOffsetVal = - (page - 1) * W.value
-              val boundaryMultiplier = if ((page == 1 && pageDragX > 0) || (page == 3 && pageDragX < 0)) 0.35f else 1.0f
-              val dampedDrag = pageDragX * boundaryMultiplier
+            while (true) {
+              val event = awaitPointerEvent()
+              val anyPressed = event.changes.any { it.pressed }
+              if (!anyPressed) {
+                // Up event - drag ended or user tapped
+                val duration = System.currentTimeMillis() - startTime
+                val endPos = event.changes.firstOrNull()?.position ?: startPosition
+                val distX = endPos.x - startPosition.x
+                val distY = endPos.y - startPosition.y
+                val dist = abs(distX) + abs(distY)
 
-              coroutineScope.launch {
-                readerOffsetX.snapTo(baseOffsetVal + dampedDrag)
+                val isConsumed = event.changes.any { it.isConsumed }
+                if (!isDraggingDetected && duration < 250 && dist < 15f && !isConsumed) {
+                  viewModel.toggleReaderHUD()
+                }
+
+                if (isDraggingDetected) {
+                  isPagingDrag = false
+                  coroutineScope.launch {
+                    if (pageDragX >= threshold && page > 1) {
+                      viewModel.setReaderPage(page - 1)
+                    } else if (pageDragX <= -threshold && page < 3) {
+                      viewModel.setReaderPage(page + 1)
+                    } else {
+                      readerOffsetX.animateTo(- (page - 1) * W.value)
+                    }
+                  }
+                }
+                break
               }
-            },
-            onDragEnd = {
-              isPagingDrag = false
-              coroutineScope.launch {
-                if (pageDragX >= threshold && page > 1) {
-                  viewModel.setReaderPage(page - 1)
-                } else if (pageDragX <= -threshold && page < 3) {
-                  viewModel.setReaderPage(page + 1)
-                } else {
-                  // Fallback snap back
-                  readerOffsetX.animateTo(- (page - 1) * W.value)
+
+              val change = event.changes.firstOrNull { it.id == down.id }
+              if (change != null) {
+                val currentPos = change.position
+                val diffX = currentPos.x - startPosition.x
+                val diffY = currentPos.y - startPosition.y
+
+                if (!isDraggingDetected) {
+                  if (abs(diffX) > 15f || abs(diffY) > 15f) {
+                    if (abs(diffX) > abs(diffY)) {
+                      isDraggingDetected = true
+                      isPagingDrag = true
+                      pageDragX = 0f
+                    } else {
+                      // Vertical scroll, don't drag so that nested scrollable handles it
+                      break
+                    }
+                  }
+                }
+
+                if (isDraggingDetected) {
+                  change.consume()
+                  val dx = currentPos.x - change.previousPosition.x
+                  val dxDp = with(density) { dx.toDp().value }
+                  pageDragX += dxDp
+
+                  val baseOffsetVal = - (page - 1) * W.value
+                  val boundaryMultiplier = if ((page == 1 && pageDragX > 0) || (page == 3 && pageDragX < 0)) 0.4f else 1.0f
+                  val dampedDrag = applyHighResistance(pageDragX, boundaryMultiplier)
+
+                  coroutineScope.launch {
+                    readerOffsetX.snapTo(baseOffsetVal + dampedDrag)
+                  }
                 }
               }
-            },
-            onDragCancel = {
-              isPagingDrag = false
-              coroutineScope.launch {
-                readerOffsetX.animateTo(- (page - 1) * W.value)
-              }
             }
-          )
-        }
-        .pointerInput(page) {
-          detectTapGestures {
-            viewModel.toggleReaderHUD()
           }
         }
     ) {
@@ -1524,35 +1590,18 @@ fun ReaderArticleContent(page: Int, docId: String, content: BilingualData.Academ
 
 @Composable
 fun HUDOverlay(viewModel: AcademiaViewModel, page: Int, hudVisible: Boolean, docTitle: String, fontScale: Float) {
-  // Translate 4 discrete positions: HUD top layers
-  val scaleMultiplier = if (hudVisible) 1.0f else 0.95f
-  val opacity = if (hudVisible) 1.0f else 0f
-
-  val animatedOpacity by androidx.compose.animation.core.animateFloatAsState(
-    targetValue = opacity,
-    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-  )
-
-  val animatedScale by androidx.compose.animation.core.animateFloatAsState(
-    targetValue = scaleMultiplier,
-    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-  )
+  val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
   Box(
-    modifier = Modifier
-      .fillMaxSize()
-      .alpha(animatedOpacity)
-      .pointerInput(hudVisible) {
-        // block clicks when hud is hidden
-        if (!hudVisible) {
-          detectTapGestures { }
-        }
-      }
+    modifier = Modifier.fillMaxSize()
   ) {
-    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-
     // 1. Top-Left Corner: Back to Catalog
-    Box(
+    AnimatedVisibility(
+      visible = hudVisible,
+      enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+              slideInVertically(initialOffsetY = { -it / 2 }, animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)),
+      exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) +
+             slideOutVertically(targetOffsetY = { -it / 2 }, animationSpec = spring(stiffness = Spring.StiffnessMedium)),
       modifier = Modifier
         .align(Alignment.TopStart)
         .padding(top = topInset + 16.dp, start = 16.dp)
@@ -1563,7 +1612,12 @@ fun HUDOverlay(viewModel: AcademiaViewModel, page: Int, hudVisible: Boolean, doc
     }
 
     // 2. Top-Right Corner: Translate / Switch language
-    Box(
+    AnimatedVisibility(
+      visible = hudVisible,
+      enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+              slideInVertically(initialOffsetY = { -it / 2 }, animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)),
+      exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) +
+             slideOutVertically(targetOffsetY = { -it / 2 }, animationSpec = spring(stiffness = Spring.StiffnessMedium)),
       modifier = Modifier
         .align(Alignment.TopEnd)
         .padding(top = topInset + 16.dp, end = 16.dp)
@@ -1574,7 +1628,12 @@ fun HUDOverlay(viewModel: AcademiaViewModel, page: Int, hudVisible: Boolean, doc
     }
 
     // 3. Bottom-Left Corner: Paper Info
-    Box(
+    AnimatedVisibility(
+      visible = hudVisible,
+      enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+              slideInVertically(initialOffsetY = { it / 2 }, animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)),
+      exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) +
+             slideOutVertically(targetOffsetY = { it / 2 }, animationSpec = spring(stiffness = Spring.StiffnessMedium)),
       modifier = Modifier
         .align(Alignment.BottomStart)
         .padding(bottom = 24.dp, start = 16.dp)
@@ -1583,7 +1642,12 @@ fun HUDOverlay(viewModel: AcademiaViewModel, page: Int, hudVisible: Boolean, doc
     }
 
     // 4. Bottom-Right Corner: Progression indicators & dots
-    Box(
+    AnimatedVisibility(
+      visible = hudVisible,
+      enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+              slideInVertically(initialOffsetY = { it / 2 }, animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)),
+      exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMedium)) +
+             slideOutVertically(targetOffsetY = { it / 2 }, animationSpec = spring(stiffness = Spring.StiffnessMedium)),
       modifier = Modifier
         .align(Alignment.BottomEnd)
         .padding(bottom = 24.dp, end = 16.dp)
@@ -1592,6 +1656,7 @@ fun HUDOverlay(viewModel: AcademiaViewModel, page: Int, hudVisible: Boolean, doc
         modifier = Modifier
           .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp))
           .border(1.dp, MaterialTheme.colorScheme.outline, shape = RoundedCornerShape(20.dp))
+          .pointerInput(Unit) { detectTapGestures { } }
           .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
       ) {
@@ -1661,6 +1726,7 @@ fun HUDCapsule(text: String, icon: @Composable () -> Unit, fontScale: Float) {
       .clip(RoundedCornerShape(20.dp))
       .background(MaterialTheme.colorScheme.surface)
       .border(1.dp, MaterialTheme.colorScheme.outline, shape = RoundedCornerShape(20.dp))
+      .pointerInput(Unit) { detectTapGestures { } }
       .padding(horizontal = 14.dp, vertical = 8.dp),
     verticalAlignment = Alignment.CenterVertically
   ) {
@@ -1831,13 +1897,28 @@ fun DragIndicator(
       .fillMaxSize()
       .alpha(progress.coerceAtLeast(0.1f))
   ) {
+    val paddingValues = if (isVerticalEdge) {
+      if (alignment == Alignment.CenterStart) {
+        androidx.compose.foundation.layout.PaddingValues(start = 4.dp, end = 24.dp, top = 24.dp, bottom = 24.dp)
+      } else {
+        androidx.compose.foundation.layout.PaddingValues(start = 24.dp, end = 4.dp, top = 24.dp, bottom = 24.dp)
+      }
+    } else {
+      androidx.compose.foundation.layout.PaddingValues(24.dp)
+    }
+
     Column(
       modifier = Modifier
         .align(alignment)
-        .padding(24.dp)
+        .padding(paddingValues)
         .then(
           if (isVerticalEdge) {
-            Modifier.width(110.dp)
+            Modifier
+              .offset(x = if (alignment == Alignment.CenterStart) (-35).dp else 35.dp)
+              .graphicsLayer {
+                rotationZ = if (alignment == Alignment.CenterStart) -90f else 90f
+              }
+              .width(110.dp)
           } else {
             Modifier.fillMaxWidth()
           }
@@ -1967,7 +2048,7 @@ fun getDragProgress(value: Float, threshold: Float): Float {
 
 fun applyHighResistance(delta: Float, limitMultiplier: Float = 1.0f): Float {
   val absD = abs(delta)
-  val resistanceFactor = 3.5f * limitMultiplier
+  val resistanceFactor = 1.8f * limitMultiplier
   return kotlin.math.sign(delta) * absD.pow(0.45f) * resistanceFactor
 }
 
