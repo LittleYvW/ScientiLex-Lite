@@ -253,8 +253,8 @@ fun AcademiaApp(viewModel: AcademiaViewModel) {
   val searchTerm by viewModel.searchTerm.collectAsState()
   val fontScaleMode by viewModel.fontScaleMode.collectAsState()
 
-  // Typography scalar based on Settings
-  val fontScale = if (fontScaleMode == "compact") 0.85f else 1.0f
+  // Typography scalar based on Settings - scaled up as requested
+  val fontScale = if (fontScaleMode == "compact") 1.05f else 1.25f
 
   // Scroll states for panels to control gesture enabled states smoothly
   val catalogScrollState = rememberScrollState()
@@ -519,7 +519,8 @@ fun AcademiaApp(viewModel: AcademiaViewModel) {
         dragAxis = dragAxis,
         dragX = dragX,
         dragY = dragY,
-        threshold = threshold
+        threshold = threshold,
+        fontScale = fontScale
       )
     }
 
@@ -626,10 +627,10 @@ fun AboutPanel(fontScale: Float, isActive: Boolean) {
           fontSize = (17.sp * fontScale),
           fontFamily = FontFamily.Serif,
           fontStyle = FontStyle.Italic,
-          lineHeight = 30.sp,
+          lineHeight = (30.sp * fontScale),
           fontWeight = FontWeight.Normal
         ),
-        modifier = Modifier.padding(bottom = 24.dp)
+        modifier = Modifier.padding(bottom = 32.dp)
       )
 
       Text(
@@ -638,9 +639,9 @@ fun AboutPanel(fontScale: Float, isActive: Boolean) {
         style = TextStyle(
           fontSize = (15.sp * fontScale),
           fontFamily = FontFamily.Serif,
-          lineHeight = 28.sp
+          lineHeight = (28.sp * fontScale)
         ),
-        modifier = Modifier.padding(bottom = 16.dp)
+        modifier = Modifier.padding(bottom = 20.dp)
       )
 
       Text(
@@ -649,9 +650,9 @@ fun AboutPanel(fontScale: Float, isActive: Boolean) {
         style = TextStyle(
           fontSize = (15.sp * fontScale),
           fontFamily = FontFamily.Serif,
-          lineHeight = 28.sp
+          lineHeight = (28.sp * fontScale)
         ),
-        modifier = Modifier.padding(bottom = 16.dp)
+        modifier = Modifier.padding(bottom = 20.dp)
       )
     }
   }
@@ -870,7 +871,7 @@ fun CatalogPanel(viewModel: AcademiaViewModel, fontScale: Float, isActive: Boole
             style = TextStyle(
               fontSize = (14.sp * fontScale),
               fontFamily = FontFamily.Serif,
-              lineHeight = 22.sp,
+              lineHeight = (22.sp * fontScale),
               textAlign = TextAlign.Center
             )
           )
@@ -898,15 +899,15 @@ data class CatalogPaperItem(
 fun CategoryChip(text: String, isSelected: Boolean, fontScale: Float, onClick: () -> Unit) {
   Box(
     modifier = Modifier
-      .clip(RoundedCornerShape(20.dp))
+      .clip(RoundedCornerShape(24.dp))
       .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
       .border(
         width = 1.dp,
         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(24.dp)
       )
       .clickable { onClick() }
-      .padding(horizontal = 14.dp, vertical = 6.dp)
+      .padding(horizontal = 18.dp, vertical = 9.dp)
   ) {
     Text(
       text = text,
@@ -926,7 +927,7 @@ fun CatalogArticleItem(paper: CatalogPaperItem, fontScale: Float, onClick: () ->
     modifier = Modifier
       .fillMaxWidth()
       .clickable { onClick() }
-      .padding(vertical = 12.dp)
+      .padding(vertical = 18.dp)
   ) {
     Text(
       text = paper.meta,
@@ -938,28 +939,28 @@ fun CatalogArticleItem(paper: CatalogPaperItem, fontScale: Float, onClick: () ->
         letterSpacing = 0.05.sp
       )
     )
-    Spacer(modifier = Modifier.height(6.dp))
+    Spacer(modifier = Modifier.height(8.dp))
     Text(
       text = paper.title,
       color = MaterialTheme.colorScheme.onBackground,
       style = TextStyle(
-        fontSize = (18.sp * fontScale),
+        fontSize = (20.sp * fontScale),
         fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Medium,
-        lineHeight = 24.sp
+        lineHeight = (28.sp * fontScale)
       )
     )
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(10.dp))
     Text(
       text = paper.desc,
       color = MaterialTheme.colorScheme.secondary,
       style = TextStyle(
-        fontSize = (13.sp * fontScale),
+        fontSize = (14.sp * fontScale),
         fontFamily = FontFamily.SansSerif,
-        lineHeight = 20.sp
+        lineHeight = (22.sp * fontScale)
       )
     )
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(20.dp))
     Box(
       modifier = Modifier
         .fillMaxWidth()
@@ -1464,7 +1465,7 @@ fun ReaderArticleContent(page: Int, docId: String, content: BilingualData.Academ
               fontSize = (24.sp * fontScale),
               fontFamily = FontFamily.Serif,
               fontWeight = FontWeight.Medium,
-              lineHeight = 32.sp,
+              lineHeight = (32.sp * fontScale),
               textAlign = TextAlign.Center
             ),
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
@@ -1499,7 +1500,7 @@ fun ReaderArticleContent(page: Int, docId: String, content: BilingualData.Academ
             style = TextStyle(
               fontSize = (14.sp * fontScale),
               fontFamily = FontFamily.Serif,
-              lineHeight = 26.sp,
+              lineHeight = (26.sp * fontScale),
               textAlign = TextAlign.Justify
             )
           )
@@ -1510,7 +1511,7 @@ fun ReaderArticleContent(page: Int, docId: String, content: BilingualData.Academ
             style = TextStyle(
               fontSize = (14.sp * fontScale),
               fontFamily = FontFamily.Serif,
-              lineHeight = 26.sp,
+              lineHeight = (26.sp * fontScale),
               textAlign = TextAlign.Justify
             )
           )
@@ -1534,7 +1535,7 @@ fun ReaderArticleContent(page: Int, docId: String, content: BilingualData.Academ
             style = TextStyle(
               fontSize = (14.sp * fontScale),
               fontFamily = FontFamily.Serif,
-              lineHeight = 26.sp,
+              lineHeight = (26.sp * fontScale),
               textAlign = TextAlign.Justify
             )
           )
@@ -1567,7 +1568,7 @@ fun ReaderArticleContent(page: Int, docId: String, content: BilingualData.Academ
             style = TextStyle(
               fontSize = (14.sp * fontScale),
               fontFamily = FontFamily.Serif,
-              lineHeight = 26.sp,
+              lineHeight = (26.sp * fontScale),
               textAlign = TextAlign.Justify
             )
           )
@@ -1591,7 +1592,7 @@ fun ReaderArticleContent(page: Int, docId: String, content: BilingualData.Academ
             style = TextStyle(
               fontSize = (14.sp * fontScale),
               fontFamily = FontFamily.Serif,
-              lineHeight = 26.sp,
+              lineHeight = (26.sp * fontScale),
               textAlign = TextAlign.Justify
             )
           )
@@ -1602,7 +1603,7 @@ fun ReaderArticleContent(page: Int, docId: String, content: BilingualData.Academ
             style = TextStyle(
               fontSize = (14.sp * fontScale),
               fontFamily = FontFamily.Serif,
-              lineHeight = 26.sp,
+              lineHeight = (26.sp * fontScale),
               textAlign = TextAlign.Justify
             )
           )
@@ -1634,7 +1635,7 @@ fun ReaderArticleContent(page: Int, docId: String, content: BilingualData.Academ
               style = TextStyle(
                 fontSize = (12.sp * fontScale),
                 fontFamily = FontFamily.Serif,
-                lineHeight = 18.sp
+                lineHeight = (18.sp * fontScale)
               ),
               modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -1815,7 +1816,8 @@ fun ActiveNavigationIndicators(
   dragAxis: String?,
   dragX: Float,
   dragY: Float,
-  threshold: Float
+  threshold: Float,
+  fontScale: Float
 ) {
   if (!isDragging || dragAxis == null) return
 
@@ -1831,7 +1833,8 @@ fun ActiveNavigationIndicators(
             label = "关于系统",
             progress = progressNum,
             isPrimed = isPrimed,
-            alignment = Alignment.CenterStart
+            alignment = Alignment.CenterStart,
+            fontScale = fontScale
           )
         } else if (dragX < 0) {
           // Right Edge indicator: reveal Settings preferences
@@ -1839,7 +1842,8 @@ fun ActiveNavigationIndicators(
             label = "系统设置",
             progress = progressNum,
             isPrimed = isPrimed,
-            alignment = Alignment.CenterEnd
+            alignment = Alignment.CenterEnd,
+            fontScale = fontScale
           )
         }
       } else if (dragAxis == "y") {
@@ -1849,7 +1853,8 @@ fun ActiveNavigationIndicators(
             label = "文献目录",
             progress = progressNum,
             isPrimed = isPrimed,
-            alignment = Alignment.TopCenter
+            alignment = Alignment.TopCenter,
+            fontScale = fontScale
           )
         } else if (dragY < 0) {
           // Bottom Edge indicator: reveal content management
@@ -1857,7 +1862,8 @@ fun ActiveNavigationIndicators(
             label = "内容管理",
             progress = progressNum,
             isPrimed = isPrimed,
-            alignment = Alignment.BottomCenter
+            alignment = Alignment.BottomCenter,
+            fontScale = fontScale
           )
         }
       }
@@ -1868,28 +1874,32 @@ fun ActiveNavigationIndicators(
           label = "返回中央仪表",
           progress = progressNum,
           isPrimed = isPrimed,
-          alignment = Alignment.CenterEnd
+          alignment = Alignment.CenterEnd,
+          fontScale = fontScale
         )
       } else if (currentPanel == PanelType.SETTINGS && dragX > 0) {
         DragIndicator(
           label = "返回中央仪表",
           progress = progressNum,
           isPrimed = isPrimed,
-          alignment = Alignment.CenterStart
+          alignment = Alignment.CenterStart,
+          fontScale = fontScale
         )
       } else if (currentPanel == PanelType.CATALOG && dragY < 0) {
         DragIndicator(
           label = "返回中央仪表",
           progress = progressNum,
           isPrimed = isPrimed,
-          alignment = Alignment.BottomCenter
+          alignment = Alignment.BottomCenter,
+          fontScale = fontScale
         )
       } else if (currentPanel == PanelType.MANAGER && dragY > 0) {
         DragIndicator(
           label = "返回中央仪表",
           progress = progressNum,
           isPrimed = isPrimed,
-          alignment = Alignment.TopCenter
+          alignment = Alignment.TopCenter,
+          fontScale = fontScale
         )
       }
     }
@@ -1941,7 +1951,8 @@ fun DragIndicator(
   progress: Float,
   isPrimed: Boolean,
   alignment: Alignment,
-  isBoundaryLimit: Boolean = false
+  isBoundaryLimit: Boolean = false,
+  fontScale: Float = 1.0f
 ) {
   val accentColor = MaterialTheme.colorScheme.primary
   val borderColor = MaterialTheme.colorScheme.outline
@@ -1993,7 +2004,7 @@ fun DragIndicator(
         text = label,
         color = if (isBoundaryLimit) errorColor else if (isPrimed) accentColor else MaterialTheme.colorScheme.secondary,
         style = TextStyle(
-          fontSize = 11.sp,
+          fontSize = (11.sp * fontScale),
           fontFamily = FontFamily.Serif,
           fontWeight = if (isPrimed) FontWeight.SemiBold else FontWeight.Normal,
           letterSpacing = if (isPrimed) 0.15.sp else 0.05.sp
