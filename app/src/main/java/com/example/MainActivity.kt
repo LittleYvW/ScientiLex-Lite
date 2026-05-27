@@ -13,6 +13,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -630,7 +633,7 @@ fun AboutPanel(fontScale: Float, isActive: Boolean) {
       )
 
       Text(
-        text = "    Academia 尝试回答一个关于“信息熵”的命题：如何在不牺牲检索效率的前提下，消解现代应用中多余的视觉噪音与控制逻辑？我们摒弃了传统的页面跳转，转而采用纯粹的物理空间手势来映射界面的运作形态。",
+        text = "    ScientiLex 尝试回答一个关于“信息熵”的命题：如何在不牺牲检索效率的前提下，消解现代应用中多余的视觉噪音与控制逻辑？我们摒弃了传统的页面跳转，转而采用纯粹的物理空间手势来映射界面的运作形态。",
         color = MaterialTheme.colorScheme.onBackground,
         style = TextStyle(
           fontSize = (15.sp * fontScale),
@@ -1119,6 +1122,25 @@ fun borderStroke(color: Color) = androidx.compose.foundation.BorderStroke(1.dp, 
 fun SearchPanel(viewModel: AcademiaViewModel, fontScale: Float, isActive: Boolean) {
   val focusManager = LocalFocusManager.current
   var localInput by remember { mutableStateOf("") }
+  var isFocused by remember { mutableStateOf(false) }
+
+  val underlineColor by animateColorAsState(
+    targetValue = if (isFocused) {
+      MaterialTheme.colorScheme.primary
+    } else if (localInput.isNotEmpty()) {
+      MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+    } else {
+      MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+    },
+    animationSpec = spring(stiffness = Spring.StiffnessLow),
+    label = "underlineColor"
+  )
+
+  val underlineThickness by animateDpAsState(
+    targetValue = if (isFocused) 2.dp else 1.dp,
+    animationSpec = spring(stiffness = Spring.StiffnessMedium),
+    label = "underlineThickness"
+  )
 
   Column(
     modifier = Modifier
@@ -1128,17 +1150,48 @@ fun SearchPanel(viewModel: AcademiaViewModel, fontScale: Float, isActive: Boolea
     verticalArrangement = Arrangement.Center,
     horizontalAlignment = Alignment.CenterHorizontally
   ) {
-    Text(
-      text = "A C A D E M I A",
-      color = MaterialTheme.colorScheme.onBackground,
-      style = TextStyle(
-        fontSize = (32.sp * fontScale),
-        fontFamily = FontFamily.Serif,
-        fontWeight = FontWeight.Light,
-        letterSpacing = 0.25.sp
-      ),
-      textAlign = TextAlign.Center
-    )
+    Column(
+      horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+      Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text(
+          text = "Scienti",
+          color = MaterialTheme.colorScheme.onBackground,
+          style = TextStyle(
+            fontSize = (48.sp * fontScale),
+            fontFamily = FontFamily.Serif,
+            fontWeight = FontWeight.Light,
+            letterSpacing = 0.05.sp
+          )
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Box(
+          modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+            .border(
+              width = 1.dp,
+              color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+              shape = RoundedCornerShape(10.dp)
+            )
+            .padding(horizontal = 14.dp, vertical = 4.dp)
+        ) {
+          Text(
+            text = "Lex",
+            color = MaterialTheme.colorScheme.primary,
+            style = TextStyle(
+              fontSize = (46.sp * fontScale),
+              fontFamily = FontFamily.Serif,
+              fontWeight = FontWeight.Bold,
+              letterSpacing = 0.05.sp
+            )
+          )
+        }
+      }
+    }
 
     Spacer(modifier = Modifier.height(40.dp))
 
@@ -1148,9 +1201,9 @@ fun SearchPanel(viewModel: AcademiaViewModel, fontScale: Float, isActive: Boolea
         .widthIn(max = 480.dp)
         .fillMaxWidth()
         .drawBehind {
-          val stroke = 1.dp.toPx()
+          val stroke = underlineThickness.toPx()
           drawLine(
-            color = if (localInput.isNotEmpty()) LightAccent else LightBorder,
+            color = underlineColor,
             start = Offset(0f, size.height),
             end = Offset(size.width, size.height),
             strokeWidth = stroke
@@ -1160,7 +1213,7 @@ fun SearchPanel(viewModel: AcademiaViewModel, fontScale: Float, isActive: Boolea
     ) {
       if (localInput.isEmpty()) {
         Text(
-          text = "输入关键词，回车过滤检索并跳转...",
+          text = "搜索",
           color = MaterialTheme.colorScheme.secondary,
           style = TextStyle(
             fontSize = (15.sp * fontScale),
@@ -1199,7 +1252,11 @@ fun SearchPanel(viewModel: AcademiaViewModel, fontScale: Float, isActive: Boolea
             }
           }
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+          .fillMaxWidth()
+          .onFocusChanged { focusState ->
+            isFocused = focusState.isFocused
+          }
       )
     }
   }
