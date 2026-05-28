@@ -13,6 +13,9 @@
 /.idea/deviceManager.xml
 /.idea/studiobot.xml
 /.idea/markdown.xml
+/.idea/.name
+/.idea/.gitignore
+/.idea/AndroidProjectSystem.xml
 .DS_Store
 /build
 /captures
@@ -41,3 +44,6 @@ debug.keystore
 
 # Keystore files
 *.jks
+
+# Gradle daemon JVM settings (local)
+/gradle/gradle-daemon-jvm.properties
