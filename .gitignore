@@ -1,6 +1,6 @@
 *.iml
 .gradle
-.kotlin
+.kotlin/sessions/
 /local.properties
 /.idea/caches
 /.idea/libraries
@@ -8,11 +8,36 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/migrations.xml
+/.idea/deviceManager.xml
+/.idea/studiobot.xml
+/.idea/markdown.xml
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
-local.properties
+.build-outputs/
 .env
 debug.keystore
+
+# Built application files
+*.apk
+*.aab
+*.ap_
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Log Files
+*.log
+
+# Heap dumps
+*.hprof
+
+# Keystore files
+*.jks
